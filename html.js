@@ -4,6 +4,41 @@
   https://github.com/systemjs/plugin-css
 */
 
+function importHref(load) {
+  return new Promise(function (resolve, reject) {
+    var link = load.metadata.link = document.createElement('link');
+    link.rel = 'import';
+    link.href = load.address;
+
+    var timeout = setTimeout(function () {
+      reject('Unable to load HTML');
+    }, waitSeconds * 1000);
+    var _callback = function (error) {
+      clearTimeout(timeout);
+      link.onload = link.onerror = function () {};
+      setTimeout(function () {
+        if (error) {
+          reject(error);
+        } else {
+          resolve('');
+        }
+      }, 7);
+    };
+
+    link.onload = function () {
+      processDocument(link.import).then(function () {
+        _callback();
+      });
+    };
+
+    link.onerror = function (event) {
+      _callback(event.error);
+    };
+
+    head.appendChild(link);
+  });
+}
+
 if (typeof window === 'undefined') {
   exports.fetch = function (load) {
     load.metadata.build = true;
@@ -16,9 +51,10 @@ if (typeof window === 'undefined') {
     if (loader.buildHTML === false) {
       return '';
     }
-    return getBuilder().then(function (builder) {
-      return builder.call(loader, loads, opts);
-    });
+    System.import('./html-builder').then((m) => {
+        m.bundle.call(loader, loads, opts);
+    }).catch((e) => {});
+    // require('./html-builder').bundle.call(loader, loads, opts);
   };
 } else {
   exports.build = false;
@@ -62,49 +98,4 @@ function processDocument(e) {
   }
 
   return Promise.all(Q);
-}
-
-function importHref(load) {
-  return new Promise(function (resolve, reject) {
-    var link = load.metadata.link = document.createElement('link');
-    link.rel = 'import';
-    link.href = load.address;
-
-    var timeout = setTimeout(function () {
-      reject('Unable to load HTML');
-    }, waitSeconds * 1000);
-    var _callback = function (error) {
-      clearTimeout(timeout);
-      link.onload = link.onerror = function () {};
-      setTimeout(function () {
-        if (error) {
-          reject(error);
-        } else {
-          resolve('');
-        }
-      }, 7);
-    };
-
-    link.onload = function () {
-      processDocument(link.import).then(function () {
-        _callback();
-      });
-    };
-
-    link.onerror = function (event) {
-      _callback(event.error);
-    };
-
-    head.appendChild(link);
-  });
-}
-
-function getBuilder() {
-  return System.import('./html-builder', {name: module.id})
-    .catch(function (err) {
-      if (err.toString().indexOf('Cannot find module \'vulcanize\'') !== -1) {
-        throw new Error('Install Polymer/vulcanize via `npm install vulcanize --save-dev` for HTML build support. Set System.buildHTML = false to skip HTML builds.');
-      }
-      throw err;
-    });
 }
