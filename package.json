@@ -14,6 +14,10 @@
   "jspm": {
     "directories": {},
     "dependencies": {
+      "dom5": "npm:dom5@^2.3.0",
+      "parse5": "npm:parse5@^3.0.3",
+      "polymer-analyzer": "npm:polymer-analyzer@^2.7.0",
+      "polymer-bundler": "npm:polymer-bundler@^3.1.1",
       "webcomponentsjs": "github:webcomponents/webcomponentsjs@^0.7.22"
     },
     "devDependencies": {
@@ -55,14 +59,7 @@
     "sinon-chai": "^2.8.0",
     "xo": "^0.16.0"
   },
-  "dependencies": {
-    "dom5": "^2.3.0",
-    "mkdirp": "^0.5.1",
-    "parse5": "^3.0.3",
-    "polymer-analyzer": "^2.7.0",
-    "polymer-bundler": "^3.1.1",
-    "vulcanize": "^1.10.2"
-  },
+  "dependencies": {},
   "xo": {
     "esnext": false,
     "space": 2,

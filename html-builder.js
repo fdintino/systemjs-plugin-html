@@ -3,31 +3,43 @@
 
 /* eslint import/no-extraneous-dependencies: 0 */
 import path from '@node/path';
+import fs from '@node/fs';
 import {Analyzer, FSUrlLoader} from 'polymer-analyzer';
 import {Bundler} from 'polymer-bundler';
-import mkdirp from '@node/mkdirp';
-import {dirname} from '@node/path';
 import parse5 from 'parse5';
 import * as dom5 from 'dom5';
-import {predicates} from 'dom5';
-import fs from '@node/fs';
 
 var isWin = process.platform.match(/^win/);
 
-const domModuleMatch = predicates.AND(
-  predicates.hasTagName('dom-module'),
-  predicates.hasAttr('id'));
+const domModuleMatch = dom5.predicates.AND(
+  dom5.predicates.hasTagName('dom-module'),
+  dom5.predicates.hasAttr('id'));
 
-var pathmap = {};
+function mkdirp(target) {
+  const initial = path.isAbsolute(target) ? path.sep : '';
+  target.split(path.sep).reduce((parent, child) => {
+    const cur = path.resolve(parent, child);
+    if (!fs.existsSync(cur)) {
+      fs.mkdirSync(cur);
+    }
+    return cur;
+  }, initial);
+}
 
-function populatePathMap(packages) {
+function createPathMap(packages, pathmap) {
+  if (typeof packages === 'undefined') {
+    packages = Object.keys(System.packages);
+  }
+  if (typeof pathmap === 'undefined') {
+    pathmap = {};
+  }
   packages.forEach((p) => {
     if (!p.includes('/bower/')) {
       return;
     }
     if (System.packages[p] && System.packages[p].map) {
-      var mapPackages = Object.values(System.packages[p].map).map((n) => System.normalizeSync(n));
-      populatePathMap(mapPackages);
+      var mapPackages = Object.values(System.packages[p].map).map(n => System.normalizeSync(n));
+      createPathMap(mapPackages, pathmap);
     }
     var k = p.replace(/^file:\/\//, '');
     var prefix = (k.match(/^(.*)@[^/]+$/) || [])[1];
@@ -36,13 +48,14 @@ function populatePathMap(packages) {
     }
     pathmap[prefix] = k;
   });
+  return pathmap;
 }
 
-populatePathMap(Object.keys(System.packages));
+var pathmap = createPathMap();
 
 class SystemJSUrlLoader {
   constructor(root) {
-    this.otherRoot = dirname(root);
+    this.otherRoot = path.dirname(root);
     this.root = path.resolve(process.cwd());
     this._loader = new FSUrlLoader(this.root);
   }
@@ -58,7 +71,6 @@ class SystemJSUrlLoader {
             .catch((e) => reject(e))
             .then((contents) => resolve(contents));
         } else if (error) {
-          console.log('not found! ', url);
           reject(error);
         } else {
           resolve(contents);
@@ -114,7 +126,7 @@ export function bundle(loads, opts) {
   var loader = this;
   var baseUrl = undefined;
   if (loads.length) {
-    baseUrl = dirname(fromFileURL(loads[0].address));
+    baseUrl = path.dirname(fromFileURL(loads[0].address));
   }
 
   const analyzer = new Analyzer({
@@ -144,7 +156,7 @@ export function bundle(loads, opts) {
   }).join('\n');
 
   return new Promise(function (resolve, reject) {
-    mkdirp.sync(dirname(opts.outFile));
+    mkdirp(path.dirname(opts.outFile));
     fs.writeFileSync(outFile, output);
     console.log('     Bundlerizing ', outFile);
 
